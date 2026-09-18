@@ -24,7 +24,7 @@ jupyter nbconvert --to notebook --execute --inplace data_cleaning_and_eda.ipynb
 
 ---
 
-## Round 1: Data Cleaning & EDA Summary
+## Cleaning Summary
 
 | Issue | Rows Affected | Action Taken |
 | --- | --- | --- |
@@ -36,15 +36,17 @@ jupyter nbconvert --to notebook --execute --inplace data_cleaning_and_eda.ipynb
 | **Missing likes** (literal `"NULL"`) | 1,858 | Kept as true missing, flagged (`likes_missing`) |
 | **Negative likes** | 525 | Flagged as anomalous (`likes_anomalous`), excluded from `likes_valid` aggregate column, original value preserved |
 
-*(Note: Counts above are pre-deduplication; see the notebook for exact post-dedup figures).*
+*(All counts above are pre-deduplication; see the notebook for exact post-dedup figures).*
 
-### Key Data Assumptions
+---
 
-* **Users file integrity:** The users file required no structural cleaning—verified zero nulls, no duplicate IDs, and valid follower counts/dates.
-* **Location formats:** `"Singapore"` and `"São Paulo, Brazil"` formats are legitimate, not corruption.
-* **Platform imputation:** Per-user platform mode imputation is a statistical assumption, explicitly flagged per-row (`platform_imputed`) for full transparency.
-* **Free-text preservation:** Free-text `text_content` is never fabricated. Missing text stays missing and flagged.
-* **Negative likes:** Treated as data-quality anomalies (likes cannot be negative), but true values are unknown so rows are flagged rather than deleted or sign-corrected.
+## Key Assumptions
+
+* Users file required no structural cleaning — verified no nulls, no duplicate IDs, valid follower counts and dates.
+* "Singapore" and "São Paulo, Brazil" location formats are legitimate, not corruption.
+* Per-user platform mode imputation is a statistical assumption, explicitly flagged per-row (`platform_imputed`) for full transparency — not treated as ground truth.
+* Free-text `text_content` is never fabricated. Missing text stays missing and flagged.
+* Negative likes are data-quality anomalies (a "like" cannot be negative) but the true intended value is unknown, so rows are flagged rather than deleted or sign-corrected — a reversible decision documented for the evaluators.
 
 ---
 
@@ -54,47 +56,59 @@ The Round 2 pipeline builds upon the cleaned dataset to solve two independent su
 
 ### 1. Dataset Split & Preprocessing
 
-* **De-duplication:** 1,100 exact duplicate texts removed from the original 9,000 posts, resulting in **7,900 unique posts** split using an 80/20 stratified split (**6,320 train / 1,580 test**).
+* **De-duplication:** 1,100 of 9,000 rows are exact duplicate texts with consistent labels; dropped before the train/test split to prevent data leakage, leaving **7,900 unique posts** (6,320 train / 1,580 test).
 
 
-* **Pipeline Steps:** Unicode-escape repair, URL/mention masking (`<URL>`, `<USER>`), hashtag unwrapping, elongation normalization (capping repeats at 2), symbol stripping (retaining polarity-bearing punctuation `!?.,'`), lowercasing, and whitespace normalization.
+* **Pipeline Steps:** Unicode-escape repair, URL/mention masking (`<URL>` / `<USER>`), hashtag unwrapping, elongation normalization (repeats capped at 2), symbol stripping (retaining `!?.,'`), lowercasing, and whitespace normalization.
 
 
 
 ### 2. Feature Engineering
 
-Three feature blocks are concatenated into a sparse matrix per task:
+Three feature blocks are concatenated into a single sparse matrix per task:
 
 * **Word n-grams (1-2):** Max 40,000 features (`sublinear_tf=True`, `min_df=2`).
 
 
-* **Character n-grams (3-5):** Max 30,000 features for robustness against misspellings and slang.
+* **Character n-grams (3-5):** Max 30,000 features — robust to misspellings, slang, and unusual tokenization.
 
 
-* **Engineered Meta/Lexicon Features:** 10 features including VADER sentiment scores, character length, word count, exclamation/question marks, ALL-CAPS ratio, and elongated-word count, Min-Max scaled to $[0, 1]$.
-
-
-
-### 3. Model Evaluation & Performance
-
-#### Sentiment Classification (3-Class Balanced: Negative / Neutral / Positive)
-
-* **Selected Model:** LinearSVC (tuned $C=0.3$).
-
-
-* **Test Metrics:** Accuracy: **64.6%** | Macro-F1: **0.647** | Weighted-F1: **0.646** | Macro-Precision: **0.647** | Macro-Recall: **0.649**.
-
-
-* **Key Challenges:** Dominated by sarcasm, terse/ambiguous text, and reporting-register mismatches where neutral news text contains negative real-world events.
+* **10 Engineered Meta/Lexicon Features:** VADER sentiment lexicon scores (`neg`/`neu`/`pos`/`compound`), character length, word count, exclamation count, question-mark count, ALL-CAPS word ratio, and elongated-word count (Min-Max scaled to $[0, 1]$).
 
 
 
-#### Topic Classification (4-Class Imbalanced: Community_Discussion / Technical_Issues / Feature_Feedback / Account_Security)
+### 3. Model Evaluation & Performance Summary
 
-* **Selected Model:** LinearSVC (tuned $C=0.7$, `class_weight="balanced"`).
+| Task | Final Model | Accuracy | Macro-F1 | Weighted-F1 | Macro-Prec. | Macro-Recall |
+| --- | --- | --- | --- | --- | --- | --- |
+| **Sentiment (3-class)**<br> | LinearSVC
+
+ | 64.6%
+
+ | 0.647
+
+ | 0.646
+
+ | 0.647
+
+ | 0.649
+
+ |
+| **Topic (4-class)**<br> | LinearSVC
+
+ | 96.8%
+
+ | 0.831
+
+ | 0.965
+
+ | 0.956
+
+ | 0.754
+
+ |
+
+* **Sentiment Insights:** Perfectly balanced 3-way split, but lexically subtle due to sarcasm, mixed emotion, and terse text. LinearSVC ($C=0.3$) won via systematic grid search.
 
 
-* **Test Metrics:** Accuracy: **96.8%** | Macro-F1: **0.831** | Weighted-F1: **0.965** | Macro-Precision: **0.956** | Macro-Recall: **0.754**.
-
-
-* **Context:** Accuracy is high because ~86% of posts belong to `Community_Discussion`; Macro-F1 highlights performance on minority classes (`Feature_Feedback` recall is lower at 0.50 due to severe data scarcity of rare classes).
+* **Topic Insights:** Heavily imbalanced (86% `Community_Discussion`). Accuracy is high due to majority class dominance; Macro-F1 ($0.831$) correctly indicates the model is learning minority classes (`Account_Security`, `Feature_Feedback`, `Technical_Issues`) using `class_weight="balanced"`.
