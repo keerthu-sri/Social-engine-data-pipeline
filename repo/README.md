@@ -1,4 +1,4 @@
-# Social Engine — Pipeline & Model Submission (Round 1 & Round 2)
+# Social Engine : Pipeline & Model Submission (Round 1 & Round 2)
 
 Comprehensive data recovery, cleaning, exploratory data analysis (EDA), and semantic understanding/classification pipeline for the Social Engine dataset.
 
@@ -63,10 +63,12 @@ Three feature blocks are concatenated into a sparse matrix per task:
 #### Topic Classification (4-Class Imbalanced: Community_Discussion / Technical_Issues / Feature_Feedback / Account_Security)
 
 - **Selected Model:** LinearSVC (tuned $C=0.7$, `class_weight="balanced"`).
+
 - **Test Metrics:** Accuracy: **96.8%** | Macro-F1: **0.831** | Weighted-F1: **0.965** | Macro-Precision: **0.956** | Macro-Recall: **0.754**.
+
 - **Context:** Accuracy is high because \~86% of posts belong to `Community_Discussion`; Macro-F1 highlights performance on minority classes (`Feature_Feedback` recall is lower at 0.50 due to severe data scarcity of rare classes).
 
-  # Round 3 — Real-Time Analysis Notebook
+  # Round 3 : Real-Time Analysis Notebook
 
   **Competition:** Data Vortex A'26 **Topic 7:** Public Reaction to a Celebrity/Influencer Controversy **Subject:** Reported/alleged relationship between Tamil Nadu Chief Minister Vijay and actress Trisha Krishnan, and the surrounding political/fan commentary. **Note:** This notebook analyzes *public reaction only*. Neither party has confirmed the relationship; no claims about the underlying story are made or endorsed.
 
@@ -76,7 +78,7 @@ Three feature blocks are concatenated into a sparse matrix per task:
 
   | Round | Deliverable | Role in this notebook |
   | --- | --- | --- |
-  | **Round 1** | `scraper.py` | Produces the raw input — `live_dataset.csv` (and optional `.json`), collected live from YouTube (and, when available, GDELT news) over a \~40-hour collection window. |
+  | **Round 1** | `scraper.py` | Produces the raw input : `live_dataset.csv` (and optional `.json`), collected live from YouTube (and, when available, GDELT news) over a \~40-hour collection window. |
   | **Round 2** | `Round2_NLP_Notebook.ipynb`, `round2_nlp.py`, `models/` | Trains and pickles the sentiment and topic classifiers (`vectorizer_*` + `model_*` `.pkl` files) and provides the shared text-cleaning functions (`repair_text`, `clean_text`, `meta_features`, `UnionVectorizer`) that this notebook imports and re-applies to live data. |
   | **Round 3** (this notebook) | `Round3_Realtime_Analysis_Notebook.ipynb` | Loads the live dataset, cleans/filters it, applies the Round 2 models, and produces the Activity, Sentiment, Topic/Entity, and Trigger-Explanation analyses required for the Round 3 report. |
 
@@ -86,21 +88,23 @@ Three feature blocks are concatenated into a sparse matrix per task:
 
   ## 2. What this notebook does
 
-  Run top to bottom. It is safe to re-run at any point during the live collection window — later rows appended to `live_dataset.csv` simply extend the timelines.
+  Run top to bottom. It is safe to re-run at any point during the live collection window , later rows appended to `live_dataset.csv` simply extend the timelines.
+
    1. **Load & clean** `live_dataset.csv` (dedupe on `source`+`post_id`, parse timestamps, drop empty text).
-   2. **Restrict to the real controversy window** — `--yt-order relevance` scraping also pulls in old, unrelated high-comment videos (e.g. a 2013 song upload, years-old fan edits). A `WINDOW_START` cutoff removes this legacy noise before any analysis runs. **Check/update this date** to match your actual scrape start before trusting downstream charts.
-   3. **Language flagging** — tags each post `en` / `ta` (Tamil script) / `mixed` / `tanglish` (Latin-script Tamil), since the Round 2 models and VADER are English-only.
-   4. **Translation** — non-English/Tanglish text is machine-translated (`googletrans`) so it can be scored by the Round 2 models; a manual translation-quality audit sample is exported for spot-checking.
-   5. **Apply Round 2 models** — predicts `sentiment` (Positive/Negative/Neutral) and `topic` on English-language text only.
-   6. **Activity analysis** — hourly + daily post-volume buckets with rolling-baseline spike detection (≥1.75× baseline mean or ≥2σ above it).
-   7. **Sentiment analysis** — daily sentiment mix + day-over-day shift detection (flags a shift when negative-share changes by more than `SHIFT_THRESHOLD`, default 0.15).
-   8. **Topic/entity analysis** — Round 2 topic-category distribution (for reference) plus a direct daily keyword count of the story-specific entities: Vijay, Trisha, Udhayanidhi, Kangana, TVK, DMK, Sangeetha.
-   9. **Trigger explanations** — pulls any `gdelt_news` rows within ±1 day of each flagged spike/shift as a starting point for explaining *why* the change happened. This surfaces candidate headlines only; the analyst still has to read them and write the explanation.
-  10. **Export** — writes all key tables (`daily_volume_spikes.csv`, `hourly_volume_spikes.csv`, `sentiment_daily.csv`, `topic_daily.csv`, `entity_daily.csv`, `summary.json`) to `outputs/`, ready to drop into the Round 3 report.
+   2. **Restrict to the real controversy window** : `--yt-order relevance` scraping also pulls in old, unrelated high-comment videos (e.g. a 2013 song upload, years-old fan edits). A `WINDOW_START` cutoff removes this legacy noise before any analysis runs. **Check/update this date** to match your actual scrape start before trusting downstream charts.
+   3. **Language flagging** : tags each post `en` / `ta` (Tamil script) / `mixed` / `tanglish` (Latin-script Tamil), since the Round 2 models and VADER are English-only.
+   4. **Translation** : non-English/Tanglish text is machine-translated (`googletrans`) so it can be scored by the Round 2 models; a manual translation-quality audit sample is exported for spot-checking.
+   5. **Apply Round 2 models** : predicts `sentiment` (Positive/Negative/Neutral) and `topic` on English-language text only.
+   6. **Activity analysis** : hourly + daily post-volume buckets with rolling-baseline spike detection (≥1.75× baseline mean or ≥2σ above it).
+   7. **Sentiment analysis** : daily sentiment mix + day-over-day shift detection (flags a shift when negative-share changes by more than `SHIFT_THRESHOLD`, default 0.15).
+   8. **Topic/entity analysis** : Round 2 topic-category distribution (for reference) plus a direct daily keyword count of the story-specific entities: Vijay, Trisha, Udhayanidhi, Kangana, TVK, DMK, Sangeetha.
+   9. **Trigger explanations** : pulls any `gdelt_news` rows within ±1 day of each flagged spike/shift as a starting point for explaining *why* the change happened. This surfaces candidate headlines only; the analyst still has to read them and write the explanation.
+  10. **Export** : writes all key tables (`daily_volume_spikes.csv`, `hourly_volume_spikes.csv`, `sentiment_daily.csv`, `topic_daily.csv`, `entity_daily.csv`, `summary.json`) to `outputs/`, ready to drop into the Round 3 report.
 
   ---
 
   ## 3. Requirements
+
   - Python 3.12
   - `pandas`, `numpy`, `matplotlib`, `seaborn`, `scikit-learn`, `joblib`
   - `googletrans==4.0.0-rc1` (installed in-notebook via `%pip install`)
@@ -129,11 +133,12 @@ Three feature blocks are concatenated into a sparse matrix per task:
   ---
 
   ## 5. Known Limitations (carry these into the Round 3 report)
-  - **Single source:** all 1,994 in-window records are from YouTube comments only — no Twitter/X, Instagram, or forum data. Findings should not be generalized as "overall public opinion."
-  - **Language coverage:** Round 2 models were trained on English only. Tanglish text is routed through the `en` pipeline but was never part of the training distribution — treat sentiment/topic predictions on Tanglish rows as lower-confidence.
-  - **Topic-label mismatch:** the Round 2 topic categories (`Community_Discussion`, `Technical_Issues`, `Feature_Feedback`, `Account_Security`) were built for a product-feedback dataset, not celebrity/political discourse. Expect most posts to fall into `Community_Discussion` — this is a schema mismatch, not a real finding. The entity keyword counts are the more meaningful topic signal for this story.
+
+  - **Single source:** all 1,994 in-window records are from YouTube comments only : no Twitter/X, Instagram, or forum data. Findings should not be generalized as "overall public opinion."
+  - **Language coverage:** Round 2 models were trained on English only. Tanglish text is routed through the `en` pipeline but was never part of the training distribution , treat sentiment/topic predictions on Tanglish rows as lower-confidence.
+  - **Topic-label mismatch:** the Round 2 topic categories (`Community_Discussion`, `Technical_Issues`, `Feature_Feedback`, `Account_Security`) were built for a product-feedback dataset, not celebrity/political discourse. Expect most posts to fall into `Community_Discussion` - this is a schema mismatch, not a real finding. The entity keyword counts are the more meaningful topic signal for this story.
   - **News cross-referencing gap:** the `gdelt_news` source returned no rows in the last run, so spike/shift triggers could not be confirmed against external headlines and were instead inferred from the comment text itself. Widen `--gdelt-timespan` or add a news source on the next scrape to close this gap.
-  - **Translation quality:** machine-translated text (via `googletrans`) has not been independently verified at scale — only spot-checked via the manual audit sample.
+  - **Translation quality:** machine-translated text (via `googletrans`) has not been independently verified at scale , only spot-checked via the manual audit sample.
 
   ---
 
