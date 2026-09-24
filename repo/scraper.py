@@ -282,7 +282,7 @@ def main():
     ap.add_argument("--yt-order", default="relevance", choices=["relevance", "date", "rating", "viewCount"],
                     help="'relevance' finds established videos with comments already accumulated; "
                          "'date' finds only just-uploaded videos, often with few/no comments yet")
-    ap.add_argument("--out", default="live_dataset", help="output prefix -> .csv and .json")
+    ap.add_argument("--out", default="datasets/live_processing", help="output prefix -> .csv and .json")
     ap.add_argument("--min-chars", type=int, default=10)
     ap.add_argument("--loop-minutes", type=float, default=0, help=">0 enables live polling")
     ap.add_argument("--duration-hours", type=float, default=24)
